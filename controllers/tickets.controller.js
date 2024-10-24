@@ -116,9 +116,9 @@ exports.createTicket = (req, res) => {
 
             // Insertar los productos relacionados en productos_tickets
             const productosTicketsQuery = `
-                INSERT INTO productos_tickets (ticket_id, producto_id, cantidad) VALUES ?
+                INSERT INTO productos_tickets (ticket_id, producto_id) VALUES ?
             `;
-            const values = productos.map(p => [ticketId, p.producto_id, p.cantidad]);
+            const values = productos.map(p => [ticketId, p.producto_id]);
 
             conn.query(productosTicketsQuery, [values], (err) => {
                 if (err) return res.status(500).json({ error: err });
