@@ -16,7 +16,6 @@ app.use(express.json());
 
 configureDatabase(app);
 
-// Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/eventos', eventosRoutes);
 app.use('/api/inventario', inventarioRoutes);

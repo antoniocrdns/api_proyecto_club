@@ -3,8 +3,6 @@ const router = express.Router();
 const authController = require('../controllers/auth.controller');
 
 // Rutas para CRUD de productos
-router.post('/:id', authController.login);
-router.post('/:id', authController.logout);
-
+router.post('/login', authController.login);
 
 module.exports = router;
