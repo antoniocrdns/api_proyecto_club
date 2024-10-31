@@ -4,7 +4,7 @@ exports.login = (req, res) => {
     req.getConnection((err, conn) => {
         if (err) return res.status(500).json({ error: 'Error de conexión' });
 
-        const query = 'SELECT * FROM usuarios WHERE usuario = ? AND contraseña = ?';
+        const query = 'SELECT * FROM usuarios WHERE username = ? AND password = ?';
         conn.query(query, [usuario, contraseña], (err, results) => {
             if (err) return res.status(500).json({ error: err });
 

@@ -20,8 +20,8 @@ app.use(express.json());
 configureDatabase(app);
 
 app.use('/api/auth', authRoutes);
-app.use('/api/eventos', eventosRoutes);
-app.use('/api/inventario', inventarioRoutes);
+// app.use('/api/eventos', eventosRoutes);
+// app.use('/api/inventario', inventarioRoutes);
 app.use('/api/productos', productosRoutes);
 app.use('/api/tickets', ticketsRoutes);
 app.use('/api/usuarios', usuariosRoutes);
