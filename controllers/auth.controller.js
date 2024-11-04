@@ -1,12 +1,21 @@
 exports.login = (req, res) => {
-    const { usuario, contraseña } = req.body;
+    const { username, password } = req.body;
+    console.log('Datos recibidos:', username, password);
 
     req.getConnection((err, conn) => {
-        if (err) return res.status(500).json({ error: 'Error de conexión' });
+        if (err) {
+            console.error('Error de conexión:', err);
+            return res.status(500).json({ error: 'Error de conexión' });
+        }
 
         const query = 'SELECT * FROM usuarios WHERE username = ? AND password = ?';
-        conn.query(query, [usuario, contraseña], (err, results) => {
-            if (err) return res.status(500).json({ error: err });
+        conn.query(query, [username, password], (err, results) => {
+            if (err) {
+                console.error('Error en la consulta:', err);
+                return res.status(500).json({ error: err });
+            }
+
+            console.log('Resultados de la consulta:', results);
 
             if (results.length === 0) {
                 return res.status(401).json({ message: 'Usuario o contraseña incorrectos' });
