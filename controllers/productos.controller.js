@@ -3,7 +3,7 @@ exports.getAllProductos = (req, res) => {
     req.getConnection((err, conn) => {
         if (err) return res.status(500).json({ error: 'Error de conexión' });
 
-        conn.query('SELECT * FROM productos WHERE activo = TRUE', (err, results) => {
+        conn.query('SELECT * FROM productos', (err, results) => {
             if (err) return res.status(500).json({ error: err });
 
             res.status(200).json(results);
@@ -18,11 +18,11 @@ exports.getProductoById = (req, res) => {
     req.getConnection((err, conn) => {
         if (err) return res.status(500).json({ error: 'Error de conexión' });
 
-        conn.query('SELECT * FROM productos WHERE id = ? AND activo = TRUE', [id], (err, results) => {
+        conn.query('SELECT * FROM productos WHERE id = ?', [id], (err, results) => {
             if (err) return res.status(500).json({ error: err });
 
             if (results.length === 0) {
-                return res.status(404).json({ message: 'Producto no encontrado o dado de baja' });
+                return res.status(404).json({ message: 'Producto no encontrado' });
             }
 
             res.status(200).json(results[0]);
@@ -32,13 +32,34 @@ exports.getProductoById = (req, res) => {
 
 // Crear un nuevo producto en el inventario
 exports.createProducto = (req, res) => {
-    const data = { ...req.body, activo: true };  // Por defecto, el producto está activo
+    const data = { 
+        id: req.body.id,  // Mantenlo como cadena
+        nombre: req.body.nombre,
+        proveedor: req.body.proveedor,
+        precio: req.body.precio,
+        cantidad: req.body.cantidad,
+        activo: true
+
+    };
+
+    // Validación de campos requeridos
+    if (!data.nombre || !data.proveedor || !data.precio || !data.cantidad) {
+        return res.status(400).json({ error: 'Faltan campos requeridos' });
+    }
+
+    console.log('Datos del producto:', data); // Para depurar
 
     req.getConnection((err, conn) => {
-        if (err) return res.status(500).json({ error: 'Error de conexión' });
+        if (err) {
+            console.error('Error de conexión:', err);
+            return res.status(500).json({ error: 'Error de conexión' });
+        }
 
         conn.query('INSERT INTO productos SET ?', [data], (err, result) => {
-            if (err) return res.status(500).json({ error: err });
+            if (err) {
+                console.error('Error al insertar el producto:', err);
+                return res.status(500).json({ error: err });
+            }
 
             res.status(201).json({
                 message: 'Producto creado',
@@ -48,6 +69,8 @@ exports.createProducto = (req, res) => {
     });
 };
 
+
+
 // Actualizar los detalles de un producto
 exports.updateProducto = (req, res) => {
     const { id } = req.params;
@@ -56,7 +79,7 @@ exports.updateProducto = (req, res) => {
     req.getConnection((err, conn) => {
         if (err) return res.status(500).json({ error: 'Error de conexión' });
 
-        conn.query('UPDATE productos SET ? WHERE id = ? AND activo = TRUE', [data, id], (err, result) => {
+        conn.query('UPDATE productos SET ? WHERE id = ?', [data, id], (err, result) => {
             if (err) return res.status(500).json({ error: err });
 
             if (result.affectedRows === 0) {
