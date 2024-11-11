@@ -176,18 +176,80 @@ exports.createTicket = (req, res) => {
 exports.deleteTicket = (req, res) => {
     const { id } = req.params;
 
+    // Validación rápida del ID
+    if (!id || isNaN(id)) {
+        return res.status(400).json({ error: 'ID no válido' });
+    }
+
     req.getConnection((err, conn) => {
-        if (err) return res.status(500).json({ error: 'Error de conexión' });
+        if (err) {
+            return res.status(500).json({ error: 'Error de conexión a la base de datos' });
+        }
 
-        const cancelTicketQuery = 'UPDATE ventas SET cancelada = TRUE WHERE id = ?';
-        conn.query(cancelTicketQuery, [id], (err, result) => {
-            if (err) return res.status(500).json({ error: err });
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ message: 'Venta no encontrada' });
+        // Iniciar una transacción
+        conn.beginTransaction((err) => {
+            if (err) {
+                return res.status(500).json({ error: 'Error al iniciar la transacción' });
             }
 
-            res.status(200).json({ message: 'Venta cancelada con éxito' });
+            // 1. Actualizar el estado de la venta a "cancelada"
+            const cancelTicketQuery = 'UPDATE ventas SET cancelada = TRUE WHERE id = ?';
+            conn.query(cancelTicketQuery, [id], (err, result) => {
+                if (err) {
+                    return conn.rollback(() => {
+                        return res.status(500).json({ error: 'Error al cancelar la venta' });
+                    });
+                }
+
+                if (result.affectedRows === 0) {
+                    return conn.rollback(() => {
+                        return res.status(404).json({ message: 'Venta no encontrada' });
+                    });
+                }
+
+                // 2. Obtener los productos asociados a la venta
+                const getProductsQuery = 'SELECT producto_id, cantidad FROM detalle_venta WHERE venta_id = ?';
+                conn.query(getProductsQuery, [id], (err, products) => {
+                    if (err) {
+                        return conn.rollback(() => {
+                            return res.status(500).json({ error: 'Error al obtener los productos de la venta' });
+                        });
+                    }
+
+                    // 3. Iterar sobre los productos y restaurar el inventario
+                    const updateInventoryQueries = products.map(product => {
+                        return new Promise((resolve, reject) => {
+                            const updateInventoryQuery = 'UPDATE productos SET cantidad = cantidad + ? WHERE id = ?';
+                            conn.query(updateInventoryQuery, [product.cantidad, product.producto_id], (err, result) => {
+                                if (err) return reject(err);
+                                resolve(result);
+                            });
+                        });
+                    });
+
+                    // 4. Esperar a que todas las actualizaciones de inventario se realicen correctamente
+                    Promise.all(updateInventoryQueries)
+                        .then(() => {
+                            // 5. Confirmar la transacción si todo fue bien
+                            conn.commit((err) => {
+                                if (err) {
+                                    return conn.rollback(() => {
+                                        return res.status(500).json({ error: 'Error al confirmar la transacción' });
+                                    });
+                                }
+
+                                // Respondemos al cliente
+                                res.status(200).json({ message: 'Venta cancelada y productos restaurados con éxito' });
+                            });
+                        })
+                        .catch(err => {
+                            // En caso de error en alguna de las actualizaciones de inventario, hacemos rollback
+                            return conn.rollback(() => {
+                                return res.status(500).json({ error: 'Error al restaurar el inventario' });
+                            });
+                        });
+                });
+            });
         });
     });
 };
